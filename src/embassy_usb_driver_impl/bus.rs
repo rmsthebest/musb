@@ -24,8 +24,6 @@ impl<'d, T: MusbInstance> driver::Bus for Bus<'d, T> {
         poll_fn(move |cx| {
             BUS_WAKER.register(cx.waker());
 
-            let regs = T::regs();
-
             // TODO: implement VBUS detection.
             if !self.inited {
                 self.init();
@@ -33,23 +31,26 @@ impl<'d, T: MusbInstance> driver::Bus for Bus<'d, T> {
                 return Poll::Ready(Event::PowerDetected);
             }
 
-            if IRQ_RESUME.load(Ordering::Acquire) {
-                IRQ_RESUME.store(false, Ordering::Relaxed);
-                return Poll::Ready(Event::Resume);
-            }
-
             if IRQ_RESET.load(Ordering::Acquire) {
                 IRQ_RESET.store(false, Ordering::Relaxed);
 
-                regs.index().write(|w| w.set_index(0));
-                #[cfg(not(feature = "_lite"))]
-                regs.csr0h().modify(|w| w.set_flush_fifo(true));
-                regs.csr0l().modify(|w| w.set_serviced_rx_pkt_rdy(true));
-                for index in 1..ENDPOINTS.len() {
-                    regs.index().write(|w| w.set_index(index as _));
-                    regs.txcsrl().modify(|w| w.set_flush_fifo(true));
-                    regs.txcsrl().modify(|w| w.set_flush_fifo(true));
+                {
+                    let regs = T::regs();
+                    regs.index().write(|w| w.set_index(0));
+                    #[cfg(not(feature = "_lite"))]
+                    regs.csr0h().modify(|w| w.set_flush_fifo(true));
+                    regs.csr0l().modify(|w| w.set_serviced_rx_pkt_rdy(true));
+                    for index in 1..ENDPOINTS.len() {
+                        regs.index().write(|w| w.set_index(index as _));
+                        regs.txcsrl().modify(|w| w.set_flush_fifo(true));
+                        regs.txcsrl().modify(|w| w.set_flush_fifo(true));
+                    }
                 }
+
+                // A bus reset disables every endpoint but EP0 until the host
+                // configures the device again.
+                EP_TX_ENABLED.store(EP_TX_ENABLED.load(Ordering::Acquire) & 1, Ordering::Release);
+                EP_RX_ENABLED.store(EP_RX_ENABLED.load(Ordering::Acquire) & 1, Ordering::Release);
 
                 trace!("musb/poll: reset");
 
@@ -68,28 +69,41 @@ impl<'d, T: MusbInstance> driver::Bus for Bus<'d, T> {
                 return Poll::Ready(Event::Suspend);
             }
 
+            // After Suspend: if both were latched by one interrupt, the bus
+            // was suspended first.
+            if IRQ_RESUME.load(Ordering::Acquire) {
+                IRQ_RESUME.store(false, Ordering::Relaxed);
+                return Poll::Ready(Event::Resume);
+            }
+
             Poll::Pending
         })
         .await
     }
 
     fn endpoint_set_stalled(&mut self, ep_addr: EndpointAddress, stalled: bool) {
-        // This can race, so do a retry loop.
         let ep_index = ep_addr.index();
+        // The index comes from the host (SET/CLEAR_FEATURE(ENDPOINT_HALT)'s
+        // wIndex): one this chip doesn't have is ignored, not a panic.
+        if ep_index >= ENDPOINTS.len() {
+            return;
+        }
         match ep_addr.direction() {
             Direction::In => {
                 common_impl::ep_tx_stall::<T>(ep_index as _, stalled);
-                EP_TX_WAKERS[ep_addr.index()].wake();
+                EP_TX_WAKERS[ep_index].wake();
             }
             Direction::Out => {
                 common_impl::ep_rx_stall::<T>(ep_index as _, stalled);
-                EP_TX_WAKERS[ep_addr.index()].wake();
-                EP_RX_WAKERS[ep_addr.index()].wake();
+                EP_RX_WAKERS[ep_index].wake();
             }
         }
     }
 
     fn endpoint_is_stalled(&mut self, ep_addr: EndpointAddress) -> bool {
+        if ep_addr.index() >= ENDPOINTS.len() {
+            return false;
+        }
         match ep_addr.direction() {
             Direction::In => common_impl::ep_tx_is_stalled::<T>(ep_addr.index() as _),
             Direction::Out => common_impl::ep_rx_is_stalled::<T>(ep_addr.index() as _),
@@ -126,10 +140,13 @@ impl<'d, T: MusbInstance> driver::Bus for Bus<'d, T> {
                 Direction::Out => {
                     let flags = EP_RX_ENABLED.load(Ordering::Acquire) & !((1 << ep_index) as u16);
                     EP_RX_ENABLED.store(flags, Ordering::Release);
+                    // A pending read returns `Disabled`.
+                    EP_RX_WAKERS[ep_index].wake();
                 }
                 Direction::In => {
                     let flags = EP_TX_ENABLED.load(Ordering::Acquire) & !((1 << ep_index) as u16);
                     EP_TX_ENABLED.store(flags, Ordering::Release);
+                    EP_TX_WAKERS[ep_index].wake();
                 }
             }
         }

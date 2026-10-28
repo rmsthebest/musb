@@ -173,15 +173,28 @@ fn check_endpoint(
         }
     }
 
-    if alloc_ep_type == EndpointType::Bulk && used {
-        return Err(EndpointAllocError::EpUsed);
-    }
-
     let used_dir = match direction {
         Direction::Out => ep.used_rx,
         Direction::In => ep.used_tx,
     };
-    
+
+    // Without a shared FIFO, IN and OUT of one endpoint number have their own
+    // FIFO and CSRs, so they can be of different types. Only the ISO setting
+    // comes from the single `ep_type` kept per number.
+    #[cfg(not(feature = "_ep-shared-fifo"))]
+    if index != 0 && used && !used_dir {
+        let iso = EndpointType::Isochronous;
+        return if ep.ep_conf.ep_type != iso && alloc_ep_type != iso {
+            Ok(())
+        } else {
+            Err(EndpointAllocError::EpUsed)
+        };
+    }
+
+    if alloc_ep_type == EndpointType::Bulk && used {
+        return Err(EndpointAllocError::EpUsed);
+    }
+
     if !used || (ep.ep_conf.ep_type == alloc_ep_type && !used_dir) {
         Ok(())
     } else {
