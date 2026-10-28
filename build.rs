@@ -9,6 +9,12 @@ use build_src::feature::*;
 #[cfg(not(feature = "prebuild"))]
 use build_src::{block::*, build_serde::*, gen, profile::*};
 
+// The WB32 prebuild keeps u16 accessors over u8 registers by hand; generated
+// from the yaml they would be 16-bit accesses, which the WB32's byte-wide USB
+// registers don't support.
+#[cfg(all(feature = "builtin-wb32fq95", not(feature = "prebuild")))]
+compile_error!("builtin-wb32fq95 needs the `prebuild` feature (its regs.rs is hand-written)");
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=registers");
     println!("cargo:rerun-if-changed=build_src");

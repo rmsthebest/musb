@@ -34,6 +34,11 @@ impl<'d, T: MusbInstance> driver::Bus for Bus<'d, T> {
             if IRQ_RESET.load(Ordering::Acquire) {
                 IRQ_RESET.store(false, Ordering::Relaxed);
 
+                // WB32: no EP0 ack or FIFO flush here. The reset itself flushes
+                // every FIFO (RM2905025 §21.5, as ChibiOS's usb_lld_reset
+                // assumes), and by the time this runs the host's first SETUP
+                // may already be in EP0's FIFO.
+                #[cfg(not(feature = "builtin-wb32fq95"))]
                 {
                     let regs = T::regs();
                     regs.index().write(|w| w.set_index(0));
