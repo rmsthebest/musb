@@ -20,7 +20,7 @@ cfg_if::cfg_if! {
         pub mod common {
             include!("prebuilds/common.rs");
         }
-        
+
         #[cfg(feature = "builtin-py32f07x")]
         pub mod regs {
             include!("prebuilds/py32f07x/regs.rs");

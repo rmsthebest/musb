@@ -9,8 +9,8 @@ use embassy_usb_driver::{
     Direction, EndpointAddress, EndpointError, EndpointInfo, EndpointType, Event, Unsupported,
 };
 
-use crate::*;
 use crate::info::ENDPOINTS;
+use crate::*;
 
 mod endpoint;
 pub use endpoint::Endpoint;
@@ -47,12 +47,20 @@ pub unsafe fn on_interrupt<T: MusbInstance>() {
     let intrusb = regs.intrusb().read();
     let intrtx = regs.intrtx().read();
     let intrrx = regs.intrrx().read();
-    trace!("musb/on_interrupt: intrusb: {:b}, intrtx: {:b}, intrrx: {:b}", intrusb.0, intrtx.0, intrrx.0);
+    trace!(
+        "musb/on_interrupt: intrusb: {:b}, intrtx: {:b}, intrrx: {:b}",
+        intrusb.0,
+        intrtx.0,
+        intrrx.0
+    );
 
     if intrusb.reset() {
         IRQ_RESET.store(true, Ordering::SeqCst);
         // Only this handler writes it, so no fetch_add (thumbv6m has none)
-        RESET_GEN.store(RESET_GEN.load(Ordering::Relaxed).wrapping_add(1), Ordering::SeqCst);
+        RESET_GEN.store(
+            RESET_GEN.load(Ordering::Relaxed).wrapping_add(1),
+            Ordering::SeqCst,
+        );
         BUS_WAKER.wake();
         EP_TX_WAKERS[0].wake();
         EP_RX_WAKERS[0].wake();
@@ -73,7 +81,7 @@ pub unsafe fn on_interrupt<T: MusbInstance>() {
         IRQ_RESUME.store(true, Ordering::SeqCst);
         BUS_WAKER.wake();
     }
-    
+
     if intrtx.ep_tx(0) {
         EP_TX_WAKERS[0].wake();
         EP_RX_WAKERS[0].wake();

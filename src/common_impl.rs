@@ -1,11 +1,11 @@
 use embassy_usb_driver::EndpointType;
 
 use crate::alloc_endpoint::EndpointConfig;
+use crate::info::ENDPOINTS;
 use crate::regs::regs::{Intrrxe, Intrtxe};
 #[cfg(feature = "_ep-shared-fifo")]
 use crate::regs::vals::EndpointDirection;
 use crate::{trace, warn, MusbInstance};
-use crate::info::ENDPOINTS;
 
 pub fn bus_init<T: MusbInstance>() {
     T::regs().intrusbe().write(|w| {
@@ -88,7 +88,7 @@ pub fn ep_tx_is_stalled<T: MusbInstance>(index: u8) -> bool {
 }
 
 pub fn ep_tx_enable<T: MusbInstance>(index: u8, config: &EndpointConfig) {
-    #[cfg(not(feature="_fixed-fifo-size"))]
+    #[cfg(not(feature = "_fixed-fifo-size"))]
     trace!(
         "musb/ep_enable: Enabling TX endpoint {}: max_packet_size={}, fifo_size_bits={}, fifo_addr_8bytes={}, ep_type={:?}",
         index,
@@ -109,8 +109,8 @@ pub fn ep_tx_enable<T: MusbInstance>(index: u8, config: &EndpointConfig) {
     if index == 0 {
         T::regs().intrtxe().modify(|w| w.set_ep_txe(0, true));
         T::regs().csr0l().modify(|w| {
-             w.set_serviced_rx_pkt_rdy(true);
-             w.set_serviced_setup_end(true);
+            w.set_serviced_rx_pkt_rdy(true);
+            w.set_serviced_setup_end(true);
         });
         #[cfg(not(feature = "_lite"))]
         T::regs().csr0h().modify(|w| {
@@ -137,7 +137,9 @@ pub fn ep_tx_enable<T: MusbInstance>(index: u8, config: &EndpointConfig) {
                 w.set_sz(size_code);
                 w.set_dpb(true);
             });
-            T::regs().tx_fifo_add().write(|w| w.set_add(config.tx_fifo_addr_8bytes));
+            T::regs()
+                .tx_fifo_add()
+                .write(|w| w.set_add(config.tx_fifo_addr_8bytes));
         }
 
         cfg_if::cfg_if! {
@@ -183,7 +185,7 @@ pub fn ep_tx_enable<T: MusbInstance>(index: u8, config: &EndpointConfig) {
 }
 
 pub fn ep_rx_enable<T: MusbInstance>(index: u8, config: &EndpointConfig) {
-    #[cfg(not(feature="_fixed-fifo-size"))]
+    #[cfg(not(feature = "_fixed-fifo-size"))]
     trace!(
         "musb/ep_enable: Enabling RX endpoint {}: max_packet_size={}, fifo_size_bits={}, fifo_addr_8bytes={}, ep_type={:?}",
         index,
@@ -207,8 +209,8 @@ pub fn ep_rx_enable<T: MusbInstance>(index: u8, config: &EndpointConfig) {
             // EP0 has only one interrupt enable register
             w.set_ep_txe(0, true));
         T::regs().csr0l().modify(|w| {
-             w.set_serviced_rx_pkt_rdy(true);
-             w.set_serviced_setup_end(true);
+            w.set_serviced_rx_pkt_rdy(true);
+            w.set_serviced_setup_end(true);
         });
         #[cfg(not(feature = "_lite"))]
         T::regs().csr0h().modify(|w| {
@@ -230,9 +232,11 @@ pub fn ep_rx_enable<T: MusbInstance>(index: u8, config: &EndpointConfig) {
                 w.set_sz(size_code);
                 w.set_dpb(true);
             });
-            T::regs().rx_fifo_add().write(|w| w.set_add(config.rx_fifo_addr_8bytes));
+            T::regs()
+                .rx_fifo_add()
+                .write(|w| w.set_add(config.rx_fifo_addr_8bytes));
         }
-    
+
         cfg_if::cfg_if! {
             if #[cfg(feature = "_lite")] {
                 if config.rx_max_packet_size % 8 != 0 {
@@ -300,7 +304,7 @@ pub fn endpoint_set_rx_dualpacket_enabled<T: MusbInstance>(index: u8, enabled: b
         warn!("EP0 does not support dual packet mode");
     } else {
         regs.rx_dpktbufdis()
-            .modify(|w| w.set_dis(index as _,!enabled));
+            .modify(|w| w.set_dis(index as _, !enabled));
     }
 }
 

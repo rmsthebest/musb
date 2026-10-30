@@ -2,11 +2,13 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-use serde_yaml::Value;
 use crate::Block;
+use serde_yaml::Value;
 
 fn read_block_file(block_name: &str) -> Block {
-    let path = Path::new("registers").join("blocks").join(format!("{}.yaml", block_name));
+    let path = Path::new("registers")
+        .join("blocks")
+        .join(format!("{}.yaml", block_name));
     let content = fs::read_to_string(&path)
         .unwrap_or_else(|_| panic!("Failed to read block file: {}", path.display()));
 

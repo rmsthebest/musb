@@ -49,7 +49,10 @@ impl<'d, T: MusbInstance> driver::ControlPipe for ControlPipe<'d, T> {
 
             regs.index().write(|w| w.set_index(0));
             if regs.count0().read().count() != 8 {
-                trace!("musb/setup: read failed, read count: {:?}", regs.count0().read().count());
+                trace!(
+                    "musb/setup: read failed, read count: {:?}",
+                    regs.count0().read().count()
+                );
                 // Drop the packet and stall, or RxPktRdy stays set and this loops forever
                 regs.csr0l().modify(|w| {
                     w.set_serviced_rx_pkt_rdy(true);
@@ -217,7 +220,8 @@ impl<'d, T: MusbInstance> driver::ControlPipe for ControlPipe<'d, T> {
             } else {
                 Poll::Pending
             }
-        }).await;
+        })
+        .await;
         if !acked {
             return;
         }
