@@ -10,7 +10,8 @@ fn clear_ep0_flags<T: MusbInstance>() {
     regs.index().write(|w| w.set_index(0));
     let csr0 = regs.csr0l().read();
     if csr0.sent_stall() || csr0.setup_end() {
-        regs.csr0l().write(|w| w.set_serviced_setup_end(csr0.setup_end()));
+        regs.csr0l()
+            .write(|w| w.set_serviced_setup_end(csr0.setup_end()));
     }
 }
 
@@ -55,7 +56,10 @@ impl<'d, T: MusbInstance> driver::ControlPipe for ControlPipe<'d, T> {
 
             regs.index().write(|w| w.set_index(0));
             if regs.count0().read().count() != 8 {
-                trace!("musb/setup: read failed, read count: {:?}", regs.count0().read().count());
+                trace!(
+                    "musb/setup: read failed, read count: {:?}",
+                    regs.count0().read().count()
+                );
                 // Drop the packet and stall the request; without the ack,
                 // RxPktRdy stays set and this loop spins.
                 regs.csr0l().modify(|w| {
@@ -228,7 +232,8 @@ impl<'d, T: MusbInstance> driver::ControlPipe for ControlPipe<'d, T> {
             } else {
                 Poll::Pending
             }
-        }).await;
+        })
+        .await;
         if !acked {
             return;
         }

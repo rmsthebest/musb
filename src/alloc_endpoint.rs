@@ -9,7 +9,7 @@ pub struct EndpointConfig {
     pub ep_type: EndpointType,
     pub tx_max_packet_size: u16,
     pub rx_max_packet_size: u16,
-    
+
     #[cfg(not(feature = "_fixed-fifo-size"))]
     pub tx_fifo_size_bits: u8,
     #[cfg(not(feature = "_fixed-fifo-size"))]
@@ -77,11 +77,14 @@ pub fn alloc_endpoint(
     };
 
     ep.ep_conf.ep_type = ep_type;
-    
+
     // --- Dynamic FIFO Allocation Logic ---
     #[cfg(not(feature = "_fixed-fifo-size"))]
     if index == 0 {
-        assert!(max_packet_size <= 64, "endpoint 0 max packet size must be <= 64");
+        assert!(
+            max_packet_size <= 64,
+            "endpoint 0 max packet size must be <= 64"
+        );
         match direction {
             // EP0 has fixed FIFO size(64k) and address.
             Direction::Out => {
@@ -91,17 +94,16 @@ pub fn alloc_endpoint(
             }
             Direction::In => {
                 ep.ep_conf.tx_max_packet_size = max_packet_size;
-                ep.ep_conf.tx_fifo_size_bits =0;
+                ep.ep_conf.tx_fifo_size_bits = 0;
                 ep.ep_conf.tx_fifo_addr_8bytes = 0;
             }
         }
-    }
-    else {
+    } else {
         let fifo_size_bytes = max_packet_size.next_power_of_two().max(8) as u16;
         let fifo_size_8bytes = fifo_size_bytes / 8;
-        
+
         let assigned_addr_8bytes = *next_fifo_addr_8bytes;
-        
+
         // Advance the FIFO address for this new allocation
         *next_fifo_addr_8bytes += fifo_size_8bytes;
 
@@ -122,7 +124,7 @@ pub fn alloc_endpoint(
             }
         }
     }
-    
+
     #[cfg(feature = "_fixed-fifo-size")]
     {
         // For fixed FIFO, we don't calculate or assign, just record the packet size.
@@ -152,7 +154,9 @@ fn check_endpoint(
     let _ = index;
 
     #[cfg(feature = "_ep-shared-fifo")]
-    if used && index != 0 { return Err(EndpointAllocError::EpUsed) }
+    if used && index != 0 {
+        return Err(EndpointAllocError::EpUsed);
+    }
 
     if max_packet_size > ENDPOINTS[index as usize].max_packet_size {
         return Err(EndpointAllocError::MaxPacketSizeBiggerThanEpFifoSize);
@@ -201,4 +205,3 @@ fn check_endpoint(
         Err(EndpointAllocError::EpUsed)
     }
 }
-

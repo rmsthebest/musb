@@ -48,7 +48,7 @@ impl<'d, T: MusbInstance> driver::EndpointOut for Endpoint<'d, T, Out> {
             if EP_RX_ENABLED.load(Ordering::Acquire) & (1 << index) as u16 == 0 {
                 return Poll::Ready(Err(EndpointError::Disabled));
             }
-            regs.index().write(|w| w.set_index(index as _)); 
+            regs.index().write(|w| w.set_index(index as _));
             let ready = regs.rxcsrl().read().rx_pkt_rdy();
             if ready {
                 Poll::Ready(Ok(()))

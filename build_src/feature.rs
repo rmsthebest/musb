@@ -20,15 +20,19 @@ impl Features {
         } else if matches.len() > 1 {
             panic!("Multiple {}-xxx Cargo features enabled", name);
         } else {
-            Some(matches[0].strip_prefix(&prefix).unwrap().to_ascii_lowercase())
+            Some(
+                matches[0]
+                    .strip_prefix(&prefix)
+                    .unwrap()
+                    .to_ascii_lowercase(),
+            )
         }
     }
 
     pub fn get() -> Self {
-        let builtin =
-            Self::get_one_feature("builtin")
-                .expect("No builtin-xxx Cargo features enabled")
-                .replace('_', "-"); // Replace underscores with dashes for consistency
+        let builtin = Self::get_one_feature("builtin")
+            .expect("No builtin-xxx Cargo features enabled")
+            .replace('_', "-"); // Replace underscores with dashes for consistency
         Self { builtin }
     }
 }

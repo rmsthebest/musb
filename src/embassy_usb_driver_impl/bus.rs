@@ -13,7 +13,7 @@ pub struct Bus<'d, T: MusbInstance> {
 
 impl<'d, T: MusbInstance> Bus<'d, T> {
     fn init(&self) {
-        #[cfg(not(feature="_lite"))]
+        #[cfg(not(feature = "_lite"))]
         trace!("musb/bus init: DEVCTL: {:b}", T::regs().devctl().read().0);
         common_impl::bus_init::<T>();
     }

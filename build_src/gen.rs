@@ -123,10 +123,20 @@ impl crate::MusbInstance for UsbInstance {{
     }
 
     // Generate array of endpoint structures
-    writeln!(file, "pub const ENDPOINTS: [EpInfo; {}] = [", profile.endpoints.len()).unwrap();
+    writeln!(
+        file,
+        "pub const ENDPOINTS: [EpInfo; {}] = [",
+        profile.endpoints.len()
+    )
+    .unwrap();
     for ep in &profile.endpoints {
         writeln!(file, "    EpInfo {{").unwrap();
-        writeln!(file, "        ep_direction: EpDirection::{:?},", ep.ep_direction).unwrap();
+        writeln!(
+            file,
+            "        ep_direction: EpDirection::{:?},",
+            ep.ep_direction
+        )
+        .unwrap();
         writeln!(file, "        max_packet_size: {},", ep.max_packet_size).unwrap();
         writeln!(file, "    }},").unwrap();
     }

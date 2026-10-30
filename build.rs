@@ -72,8 +72,14 @@ fn build() {
         }
 
         let content = fs::read_to_string(&full_path).unwrap();
-        let fieldset_line = content.lines().find(|l| l.starts_with("fieldset/")).unwrap();
-        let logical_name = fieldset_line.trim_start_matches("fieldset/").trim_end_matches(':').to_string();
+        let fieldset_line = content
+            .lines()
+            .find(|l| l.starts_with("fieldset/"))
+            .unwrap();
+        let logical_name = fieldset_line
+            .trim_start_matches("fieldset/")
+            .trim_end_matches(':')
+            .to_string();
         item.fieldset = logical_name;
     }
 

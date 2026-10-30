@@ -23,9 +23,9 @@ use usb_device::{UsbDirection, UsbError};
 
 use crate::alloc_endpoint::{self, EndpointAllocError, EndpointConfig, EndpointData};
 use crate::common_impl;
-use crate::{trace, warn};
-use crate::MusbInstance;
 use crate::info::ENDPOINTS;
+use crate::MusbInstance;
+use crate::{trace, warn};
 
 mod control_state;
 use control_state::{ControlState, ControlStateEnum};
@@ -94,7 +94,9 @@ impl<T: MusbInstance> usb_device::bus::UsbBus for UsbdBus<T> {
                 EndpointAllocError::BufferOverflow => UsbError::EndpointMemoryOverflow,
                 EndpointAllocError::EpDirNotSupported => UsbError::InvalidEndpoint,
                 EndpointAllocError::EpUsed => UsbError::InvalidEndpoint,
-                EndpointAllocError::MaxPacketSizeBiggerThanEpFifoSize => UsbError::EndpointMemoryOverflow,
+                EndpointAllocError::MaxPacketSizeBiggerThanEpFifoSize => {
+                    UsbError::EndpointMemoryOverflow
+                }
             })
             .map(|index| usb_device::endpoint::EndpointAddress::from_parts(index as usize, ep_dir))
     }
@@ -178,9 +180,7 @@ impl<T: MusbInstance> usb_device::bus::UsbBus for UsbdBus<T> {
                         regs.csr0l().modify(|w| w.set_data_end(true));
                         self.control_state.set_state(ControlStateEnum::Idle);
                         // trace!("WRITE END, tx_len = 0, buf.len() = {}", buf.len());
-                    } else if buf.len()
-                        < self.endpoints[0].ep_conf.tx_max_packet_size as usize
-                    {
+                    } else if buf.len() < self.endpoints[0].ep_conf.tx_max_packet_size as usize {
                         // Last Package. include ZLP
                         regs.csr0l().modify(|w| w.set_data_end(true));
                         self.control_state.set_state(ControlStateEnum::Idle);
@@ -270,9 +270,7 @@ impl<T: MusbInstance> usb_device::bus::UsbBus for UsbdBus<T> {
                     }
                 }
                 ControlStateEnum::DataOut => {
-                    if (read_count as u32)
-                        < self.endpoints[0].ep_conf.rx_max_packet_size as u32
-                    {
+                    if (read_count as u32) < self.endpoints[0].ep_conf.rx_max_packet_size as u32 {
                         // Last Package. include ZLP
                         regs.csr0l().modify(|w| w.set_data_end(true));
                         self.control_state.set_state(ControlStateEnum::Idle);

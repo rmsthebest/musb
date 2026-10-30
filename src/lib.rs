@@ -44,7 +44,6 @@ pub trait MusbInstance: 'static + Send + Sync {
     fn regs() -> regs::Usb;
 }
 
-
 // In fact, only the function name `on_interrupt` conflicts.
 // However, it is unlikely that anyone would use both at the same time.
 #[cfg(all(feature = "embassy-usb-driver-impl", feature = "usb-device-impl"))]
